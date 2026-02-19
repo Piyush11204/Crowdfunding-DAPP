@@ -20,7 +20,7 @@ describe("Project", () => {
 
       const creator = address1.address;
       const minimumContribution = etherToWei("1");
-      const deadline = dateToUNIX('2023-05-22');
+      const deadline = Math.round(Date.now() / 1000) + (30 * 24 * 60 * 60); // 30 days from now
       const targetContribution = etherToWei("10");
       const projectTitle = "Testing project";
       const projectDes = "Testing project description"

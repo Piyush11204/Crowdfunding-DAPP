@@ -4,7 +4,22 @@ import CrowdFunding from '../artifacts/contracts/Crowdfunding.sol/Crowdfunding.j
 import Project from '../artifacts/contracts/Project.sol/Project.json'
 import { groupContributionByProject, groupContributors, projectDataFormatter, withdrawRequestDataFormatter} from "../helper/helper";
 
-const crowdFundingContractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+// Load contract address from config (set during deployment)
+let crowdFundingContractAddress = null;
+
+const loadContractAddress = async () => {
+  try {
+    const response = await fetch('/contractConfig.json');
+    if (response.ok) {
+      const config = await response.json();
+      crowdFundingContractAddress = config.crowdfundingAddress;
+      return config.crowdfundingAddress;
+    }
+  } catch (error) {
+    console.warn('Could not load contract config. Contract address will be dynamic.');
+  }
+  return null;
+};
 
 //Load web3 
 export const loadWeb3 = async (dispatch) => {
@@ -35,6 +50,17 @@ export const loadAccount = async (web3, dispatch) => {
 //Connect with crowd funding contract
 export const loadCrowdFundingContract = async(web3,dispatch) =>{
   try {
+    // Load contract address from config if not already loaded
+    if (!crowdFundingContractAddress) {
+      crowdFundingContractAddress = await loadContractAddress();
+    }
+
+    if (!crowdFundingContractAddress) {
+      console.warn('Contract address not found. Make sure contracts are deployed first and contractConfig.json exists.');
+      dispatch(actions.crowdFundingContractLoaded(null));
+      return null;
+    }
+
     // Verify contract exists at address
     const code = await web3.eth.getCode(crowdFundingContractAddress);
     if (code === '0x') {
