@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background: #f1f5f9;
+  font-family: 'Inter', sans-serif;
+}
+
+button:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+/* === CARDS === */
+.card {
+  @apply w-full bg-white p-4 shadow-sm rounded-xl border border-slate-100 lg:p-6;
+}
+
+.inner-card {
+  @apply bg-slate-50 p-3 mx-1 rounded-lg border border-slate-100;
+}
+
+/* === STATUS RIBBON === */
+.ribbon {
+  @apply inline-flex items-center py-0.5 px-3 rounded-full text-xs font-semibold text-white;
+}
+
+/* === INPUTS === */
+.input {
+  @apply border border-slate-300 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-400 w-full rounded-l-lg bg-white text-slate-800 text-sm;
+}
+
+.form-control-input {
+  @apply border border-slate-300 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-400 w-full rounded-lg my-1 bg-white text-slate-800 text-sm;
+}
+
+/* === BUTTONS === */
+.button {
+  @apply bg-indigo-600 text-white rounded-r-lg px-4 py-2 text-sm font-semibold hover:bg-indigo-700 active:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-colors;
+}
+
+.btn-primary {
+  @apply w-full py-2.5 bg-indigo-600 text-white rounded-lg font-semibold text-sm hover:bg-indigo-700 active:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all;
+}
+
+.btn-danger {
+  @apply py-1.5 px-3 bg-rose-500 text-white rounded-lg font-semibold text-sm hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-400 transition-all;
+}
+
+.btn-success {
+  @apply w-full py-2 bg-emerald-600 text-white rounded-lg font-semibold text-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all mt-2;
+}
+
+.withdraw-button {
+  @apply w-full mt-2 py-2 bg-emerald-600 text-white rounded-lg font-semibold text-sm hover:bg-emerald-700 active:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all;
+}
+
+/* === PROGRESS BAR === */
+.progress-bar-bg {
+  @apply w-full bg-slate-200 rounded-full h-2;
+}
+
+.progress {
+  @apply bg-indigo-500 h-2 rounded-full text-xs font-medium text-white flex items-center justify-end pr-1 leading-none transition-all;
+  min-width: 2rem;
+}
+
+/* === DATE PICKER === */
+.date-picker input {
+  box-sizing: border-box;
+  position: relative;
+}
+
+input[type='date']::-webkit-calendar-picker-indicator {
+  background: transparent;
+  bottom: 0;
+  color: transparent;
+  cursor: pointer;
+  height: auto;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: auto;
+}
+
+/* === STAT LABEL === */
+.stat-label {
+  @apply text-xs font-semibold text-slate-400 uppercase tracking-wide;
+}
+
+.stat-value {
+  @apply text-sm font-bold text-slate-700 mt-0.5;
+}
+
+/* === NAV LINK === */
+.nav-link {
+  @apply text-slate-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-indigo-50 hover:text-indigo-700 transition-colors;
+}
+
+.nav-link-active {
+  @apply bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-medium;
+}
