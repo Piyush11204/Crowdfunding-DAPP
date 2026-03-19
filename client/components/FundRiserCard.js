@@ -111,7 +111,7 @@ const FundRiserCard = ({ props, pushWithdrawRequests }) => {
               onClick={() => contributeAmount(props.address, props.minContribution)}
               disabled={btnLoader === props.address}
             >
-              {btnLoader === props.address ? 'Loading...' : 'Back'}
+              {btnLoader === props.address ? 'Loading...' : 'Add Contribution'}
             </button>
           </div>
         </div>

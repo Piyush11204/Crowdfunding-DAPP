@@ -5,6 +5,13 @@ import { useDispatch, useSelector } from 'react-redux'
 import { etherToWei } from '../helper/helper'
 import { toastSuccess, toastError } from '../helper/toastMessage'
 
+const Field = ({ label, children }) => (
+  <div className="mb-3">
+    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">{label}</label>
+    {children}
+  </div>
+)
+
 const FundRiserForm = () => {
   const crowdFundingContract = useSelector(state => state.fundingReducer.contract)
   const account = useSelector(state => state.web3Reducer.account)
@@ -40,13 +47,6 @@ const FundRiserForm = () => {
     }
     startFundRaising(web3, crowdFundingContract, data, onSuccess, onError, dispatch)
   }
-
-  const Field = ({ label, children }) => (
-    <div className="mb-3">
-      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">{label}</label>
-      {children}
-    </div>
-  )
 
   return (
     <div>
