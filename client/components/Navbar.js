@@ -14,7 +14,10 @@ const Navbar = () => {
   const [accountBalance, setAccountBalance] = useState('0')
   const [networkInfo, setNetworkInfo] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [reconnecting, setReconnecting] = useState(false)
+  const [wrongNetwork, setWrongNetwork] = useState(false)
   const account = useSelector(state => state.web3Reducer.account)
+  const contract = useSelector(state => state.fundingReducer.contract)
 
   useEffect(() => { setIsHydrated(true) }, [])
 
@@ -23,6 +26,20 @@ const Navbar = () => {
       fetchAccountDetails()
     }
   }, [account, isHydrated])
+
+  // Check if MetaMask is on the correct network
+  useEffect(() => {
+    if (!isHydrated || typeof window === 'undefined' || !window.ethereum) return;
+    const checkNetwork = async () => {
+      try {
+        const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
+        setWrongNetwork(parseInt(chainIdHex, 16) !== 31337);
+      } catch {}
+    };
+    checkNetwork();
+    window.ethereum.on('chainChanged', checkNetwork);
+    return () => window.ethereum.removeListener('chainChanged', checkNetwork);
+  }, [isHydrated]);
 
   const fetchAccountDetails = async () => {
     try {
@@ -75,7 +92,69 @@ const Navbar = () => {
     router.push('/')
   }
 
+  const handleReconnect = async () => {
+    if (typeof window !== 'undefined' && window._reloadBlockchain) {
+      setReconnecting(true)
+      await window._reloadBlockchain()
+      setReconnecting(false)
+    } else {
+      window.location.reload()
+    }
+  }
+
+  const handleConnectWallet = async () => {
+    try {
+      if (typeof window !== 'undefined' && window.ethereum) {
+        await window.ethereum.request({ method: 'eth_requestAccounts' })
+        if (window._reloadBlockchain) {
+          setReconnecting(true)
+          await window._reloadBlockchain()
+          setReconnecting(false)
+        }
+      } else {
+        alert('MetaMask is not installed. Please install MetaMask to continue.')
+      }
+    } catch (err) {
+      console.error('Wallet connect error:', err)
+    }
+  }
+
+  const handleSwitchNetwork = async () => {
+    try {
+      if (typeof window !== 'undefined' && window.ethereum) {
+        try {
+          await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x7a69' }] });
+        } catch (e) {
+          if (e.code === 4902) {
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [{ chainId: '0x7a69', chainName: 'Hardhat Local', nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }, rpcUrls: ['http://127.0.0.1:8545'] }],
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Network switch error:', err)
+    }
+  }
+
   return (
+    <>
+    {/* Wrong network banner */}
+    {isHydrated && wrongNetwork && (
+      <div className="w-full bg-amber-500 text-white text-xs font-semibold text-center py-2 px-4 flex items-center justify-center gap-3">
+        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+        </svg>
+        MetaMask is on the wrong network. Switch to Hardhat Local (localhost:8545) to use this app.
+        <button
+          onClick={handleSwitchNetwork}
+          className="underline font-bold hover:no-underline ml-1"
+        >
+          Switch Now
+        </button>
+      </div>
+    )}
     <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
@@ -102,6 +181,38 @@ const Navbar = () => {
 
           {/* Right side */}
           <div className="hidden sm:flex items-center gap-3 relative">
+            {/* Contract status badge */}
+            {isHydrated && account && (
+              <button
+                onClick={handleReconnect}
+                disabled={reconnecting}
+                title={contract ? 'Contract connected' : 'Contract not found \u2014 click to retry after redeploying'}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+                  contract
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-default'
+                    : 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 cursor-pointer animate-pulse'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${contract ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                {reconnecting ? 'Connecting…' : contract ? 'Contract OK' : 'No Contract \u2014 Retry'}
+              </button>
+            )}
+
+            {/* Connect Wallet button when no account connected */}
+            {isHydrated && !account && (
+              <button
+                onClick={handleConnectWallet}
+                disabled={reconnecting}
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 35 33" fill="none">
+                  <path d="M32.9582 1L13.1099 15.4339L16.7948 6.99733L32.9582 1Z" fill="#E17726" stroke="#E17726" strokeWidth="0.25"/>
+                  <path d="M1.0332 1L20.7226 15.5717L17.2052 6.99733L1.0332 1Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25"/>
+                </svg>
+                {reconnecting ? 'Connecting…' : 'Connect Wallet'}
+              </button>
+            )}
+
             {isHydrated && account && (
               <>
                 <button 
@@ -284,6 +395,7 @@ const Navbar = () => {
         </div>
       )}
     </nav>
+    </>
   )
 }
 

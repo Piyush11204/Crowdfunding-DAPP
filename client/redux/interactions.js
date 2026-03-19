@@ -4,28 +4,62 @@ import CrowdFunding from '../artifacts/contracts/Crowdfunding.sol/Crowdfunding.j
 import Project from '../artifacts/contracts/Project.sol/Project.json'
 import { groupContributionByProject, groupContributors, projectDataFormatter, withdrawRequestDataFormatter} from "../helper/helper";
 
-// Load contract address from config (set during deployment)
-let crowdFundingContractAddress = null;
-
+// Always fetch fresh from config — no stale module-level cache
 const loadContractAddress = async () => {
   try {
-    const response = await fetch('/contractConfig.json');
+    const response = await fetch(`/contractConfig.json?_=${Date.now()}`);
     if (response.ok) {
       const config = await response.json();
-      crowdFundingContractAddress = config.crowdfundingAddress;
-      return config.crowdfundingAddress;
+      return config.crowdfundingAddress || null;
     }
   } catch (error) {
-    console.warn('Could not load contract config. Contract address will be dynamic.');
+    console.warn('Could not load contract config.');
   }
   return null;
 };
 
-//Load web3 
+// Web3 instance for signing (MetaMask) — used for transactions
 export const loadWeb3 = async (dispatch) => {
   const web3 = new Web3(Web3.givenProvider || "http://localhost:8545");
   dispatch(actions.web3Loaded(web3));
   return web3;
+};
+
+// Always read contracts via direct localhost HTTP provider (bypasses MetaMask network confusion)
+const getReadWeb3 = () => new Web3("http://localhost:8545");
+
+// Ensure MetaMask is on Hardhat Local (chain 31337) before any transaction.
+// Attempts an automatic network switch; throws a user-friendly error if refused.
+export const requireHardhatNetwork = async () => {
+  if (typeof window === 'undefined' || !window.ethereum) {
+    throw new Error('MetaMask is not installed.');
+  }
+  const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
+  const chainId = parseInt(chainIdHex, 16);
+  if (chainId === 31337) return; // already on Hardhat
+
+  try {
+    // Try to switch
+    await window.ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: '0x7a69' }], // 31337 in hex
+    });
+  } catch (switchError) {
+    if (switchError.code === 4902) {
+      // Network not added yet — add it
+      await window.ethereum.request({
+        method: 'wallet_addEthereumChain',
+        params: [{
+          chainId: '0x7a69',
+          chainName: 'Hardhat Local',
+          nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+          rpcUrls: ['http://127.0.0.1:8545'],
+        }],
+      });
+    } else {
+      throw new Error('Please switch MetaMask to the Hardhat Local network (localhost:8545) to continue.');
+    }
+  }
 };
 
 // Load connected wallet
@@ -47,29 +81,28 @@ export const loadAccount = async (web3, dispatch) => {
   }
 };
 
-//Connect with crowd funding contract
+//Connect with crowd funding contract — always loads fresh address, always uses localhost for reads
 export const loadCrowdFundingContract = async(web3,dispatch) =>{
   try {
-    // Load contract address from config if not already loaded
-    if (!crowdFundingContractAddress) {
-      crowdFundingContractAddress = await loadContractAddress();
-    }
+    const address = await loadContractAddress();
 
-    if (!crowdFundingContractAddress) {
-      console.warn('Contract address not found. Make sure contracts are deployed first and contractConfig.json exists.');
+    if (!address) {
+      console.warn('Contract address not found. Run: npx hardhat run scripts/deploy.js --network localhost');
       dispatch(actions.crowdFundingContractLoaded(null));
       return null;
     }
 
-    // Verify contract exists at address
-    const code = await web3.eth.getCode(crowdFundingContractAddress);
-    if (code === '0x') {
-      console.warn(`No contract found at address ${crowdFundingContractAddress}. Make sure to deploy contracts first.`);
+    // Use direct localhost provider to check code — avoids MetaMask network mismatch
+    const readWeb3 = getReadWeb3();
+    const code = await readWeb3.eth.getCode(address);
+    if (code === '0x' || code === '0x0') {
+      console.warn(`No contract at ${address}. Redeploy with: npx hardhat run scripts/deploy.js --network localhost`);
       dispatch(actions.crowdFundingContractLoaded(null));
       return null;
     }
-    
-    const crowdFunding = new web3.eth.Contract(CrowdFunding.abi, crowdFundingContractAddress);
+
+    // Use the passed web3 (MetaMask) for the contract so it can sign transactions
+    const crowdFunding = new web3.eth.Contract(CrowdFunding.abi, address);
     dispatch(actions.crowdFundingContractLoaded(crowdFunding));
     return crowdFunding;
   } catch (error) {
@@ -82,8 +115,13 @@ export const loadCrowdFundingContract = async(web3,dispatch) =>{
 // Start fund raising project
 export const startFundRaising = async(web3,CrowdFundingContract,data,onSuccess,onError,dispatch) =>{
   if (!CrowdFundingContract) {
-    onError('Smart contract not loaded. Please ensure contracts are deployed and you are connected to the correct network.');
+    onError('Smart contract not loaded. Please ensure contracts are deployed.');
     return;
+  }
+  try {
+    await requireHardhatNetwork();
+  } catch (e) {
+    onError(e.message); return;
   }
 
   const {minimumContribution,deadline,targetContribution,projectTitle,projectDesc,account} = data;
@@ -149,8 +187,13 @@ export const getAllFunding = async(CrowdFundingContract,web3,dispatch) =>{
 // Contribute in fund raising project
 export const contribute = async(crowdFundingContract,data,dispatch,onSuccess,onError) =>{
   if (!crowdFundingContract) {
-    onError('Smart contract not loaded. Please ensure contracts are deployed and you are connected to the correct network.');
+    onError('Smart contract not loaded. Please ensure contracts are deployed.');
     return;
+  }
+  try {
+    await requireHardhatNetwork();
+  } catch (e) {
+    onError(e.message); return;
   }
 
   const {contractAddress,amount,account} = data;
@@ -188,6 +231,11 @@ export const createWithdrawRequest = async (web3,contractAddress,data,onSuccess,
   if (!web3 || !contractAddress) {
     onError('Web3 or contract address not available');
     return;
+  }
+  try {
+    await requireHardhatNetwork();
+  } catch (e) {
+    onError(e.message); return;
   }
 
   const {description,amount,recipient,account} = data;
@@ -242,6 +290,11 @@ export const voteWithdrawRequest = async (web3,data,onSuccess,onError) =>{
     onError('Web3 not available');
     return;
   }
+  try {
+    await requireHardhatNetwork();
+  } catch (e) {
+    onError(e.message); return;
+  }
 
   const {contractAddress,reqId,account} = data;
   try {
@@ -264,6 +317,11 @@ export const withdrawAmount = async (web3,dispatch,data,onSuccess,onError) =>{
   if (!web3) {
     onError('Web3 not available');
     return;
+  }
+  try {
+    await requireHardhatNetwork();
+  } catch (e) {
+    onError(e.message); return;
   }
 
   const {contractAddress,reqId,account,amount} = data;

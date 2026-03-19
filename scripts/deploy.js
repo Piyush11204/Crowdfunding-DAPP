@@ -12,14 +12,20 @@ async function main() {
 
   console.log("Crowdfunding deployed to:", crowdfunding.address);
 
-  // Save the contract address to a config file that Next.js can serve
-  const configPath = path.join(__dirname, "../client/public/contractConfig.json");
+  // Write the address to all config file locations Next.js can serve
   const config = {
     crowdfundingAddress: crowdfunding.address,
     deployedAt: new Date().toISOString()
   };
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-  console.log("Contract address saved to client/public/contractConfig.json");
+  const configLocations = [
+    path.join(__dirname, "../client/public/contractConfig.json"),
+    path.join(__dirname, "../client/contractConfig.json"),
+    path.join(__dirname, "../public/contractConfig.json"),
+  ];
+  for (const configPath of configLocations) {
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    console.log(`Contract address saved to ${path.relative(path.join(__dirname, ".."), configPath)}`);
+  }
 }
 
 // We recommend this pattern to be able to use async/await everywhere
