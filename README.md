@@ -39,9 +39,6 @@
     ```
     npx hardhat test
     ```
-- Connect HardHat Account to Metamask
-
-https://github.com/Thiru-Malai/Crowdfunding-DAPP/assets/73980589/f694a9ef-a035-4f2a-9763-98c90839e2b9
 
 - Deploy contract in local hardhat node
     ```
